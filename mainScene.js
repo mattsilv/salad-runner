@@ -213,7 +213,7 @@ class SaladScene extends Phaser.Scene {
 
   jump() {
     if (!this.isJumping) {
-      this.playerVelocity = -10;
+      this.playerVelocity = -12;
       this.isJumping = true;
     }
   }
@@ -241,27 +241,27 @@ class SaladScene extends Phaser.Scene {
 
     // Calculate maximum height based on jump physics
     // Using jump velocity and gravity from the game
-    const jumpVelocity = 10; // From jump() method
-    const gravity = 0.35; // From create() method
+    const jumpVelocity = 12;
+    const gravity = 0.35;
     // Maximum jump height = v²/2g where v is initial velocity and g is gravity
     const maxJumpHeight = (jumpVelocity * jumpVelocity) / (2 * gravity);
 
     // Position veggies within reachable height
     // floorY - maxJumpHeight gives us the highest reachable point
-    const minY = this.floorY - maxJumpHeight + 50; // Add offset to ensure reachability
-    const maxY = this.floorY - 100; // Keep some distance from the ground
+    const minY = this.floorY - maxJumpHeight + 70;
+    const maxY = this.floorY - 120;
 
     const skyY = Phaser.Math.Between(minY, maxY);
 
     const veg = this.add
       .text(this.scale.width, skyY, symbol, {
         fontFamily: "'Press Start 2P'",
-        fontSize: "32px", // Reduced from 64px to make veggies 50% smaller
+        fontSize: "32px",
       })
       .setOrigin(0.5);
 
     if (Phaser.Math.Between(0, 100) < 20) {
-      veg.setScale(1.2); // Reduced from 1.5 to maintain smaller proportions
+      veg.setScale(1.2);
     }
     this.floatingVeggies.push(veg);
   }
