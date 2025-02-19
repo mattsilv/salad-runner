@@ -114,7 +114,12 @@
 
         if (fontLoaded) {
           // Load our separate JS files in order
-          const scripts = ["config.js", "mainScene.js", "main.js"];
+          const scripts = [
+            "config.js",
+            "cloudBackground.js",
+            "mainScene.js",
+            "main.js",
+          ];
           let loadedCount = 0;
 
           function loadNextScript() {
