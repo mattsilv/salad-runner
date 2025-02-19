@@ -9,20 +9,42 @@ class SaladScene extends Phaser.Scene {
       window.SPRITE_CONFIG.player.key,
       window.SPRITE_CONFIG.player.file
     );
+
+    // Load the cloud asset
+    if (window.GAME_CONFIG?.enableClouds) {
+      this.load.image("cloud", "cloud.png");
+    }
   }
 
   create() {
     // Basic setup
-    this.cameras.main.setBackgroundColor("#ebf7d9");
+    this.cameras.main.setBackgroundColor("#87CEEB"); // Sky blue background
     this.floorY = this.scale.height - window.SPRITE_CONFIG.player.offsetY;
 
-    // Create UI
+    // Create game container for gameplay elements only (not UI)
+    this.gameContainer = this.add.container(0, 0);
+    this.gameContainer.setDepth(10); // Set higher depth for game elements
+
+    // Initialize cloud background if enabled
+    if (window.GAME_CONFIG?.enableClouds) {
+      try {
+        this.cloudBackground = new CloudBackground(this);
+      } catch (error) {
+        console.error("Failed to create cloud background:", error);
+        this.cloudBackground = null;
+      }
+    }
+
+    // Create UI (these will stay outside the game container)
     this.createTitle();
     this.createScoreText();
     this.createInstructions();
 
     // Create the bowl (player)
     this.createPlayer();
+
+    // Add only the player to the game container
+    this.gameContainer.add(this.player);
 
     // Prepare arrays for items
     this.dangerousItems = [];
@@ -77,6 +99,7 @@ class SaladScene extends Phaser.Scene {
   createTitle() {
     // Create container for both title and score
     this.headerContainer = this.add.container(this.scale.width / 2, 60);
+    this.headerContainer.setDepth(1);
 
     const titleText = this.add
       .text(0, 0, "JUST\nSALAD\nRUNNER", {
@@ -102,14 +125,15 @@ class SaladScene extends Phaser.Scene {
         align: "center",
         resolution: 2,
       })
-      .setOrigin(0, 0.3); // Adjust vertical alignment to match title
+      .setOrigin(0, 0.3)
+      .setDepth(1); // Ensure score is always visible
 
     this.headerContainer.add(this.scoreText);
   }
 
   createInstructions() {
     // Calculate available width for instructions
-    const instructionsWidth = Math.min(500, this.scale.width - 40); // 20px padding on each side
+    const instructionsWidth = Math.min(500, this.scale.width - 40);
 
     this.instructions = this.add
       .text(
@@ -121,14 +145,93 @@ class SaladScene extends Phaser.Scene {
         "Tap or SPACE to jump\nCatch veggies above, avoid junk below",
         {
           fontFamily: "'Press Start 2P'",
-          fontSize: "16px",
+          fontSize: "14px",
           color: "#333",
           align: "center",
           resolution: 2,
           wordWrap: { width: instructionsWidth, useAdvancedWrap: true },
         }
       )
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(1);
+
+    // Add bonus items legend
+    const bonusItems = window.FLOATING_VEGGIES.join(" ");
+    this.bonusLegend = this.add
+      .text(
+        this.scale.width / 2,
+        this.instructions.y + this.instructions.height + 20,
+        `Bonus Items (+20 pts):\n${bonusItems}`,
+        {
+          fontFamily: "'Press Start 2P'",
+          fontSize: "12px",
+          color: "#2d5a27",
+          align: "center",
+          resolution: 2,
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(1);
+
+    // Add dangerous items legend
+    const dangerousItems = window.DANGEROUS_SYMBOLS.join(" ");
+    this.dangerLegend = this.add
+      .text(
+        this.scale.width / 2,
+        this.bonusLegend.y + this.bonusLegend.height + 10,
+        `Avoid These!\n${dangerousItems}`,
+        {
+          fontFamily: "'Press Start 2P'",
+          fontSize: "12px",
+          color: "#ff0000",
+          align: "center",
+          resolution: 2,
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(1);
+
+    // Add a temporary tip that fades out
+    this.tempTip = this.add
+      .text(
+        this.scale.width / 2,
+        this.dangerLegend.y + this.dangerLegend.height + 15,
+        "TIP: Jump early to catch the floating veggies!",
+        {
+          fontFamily: "'Press Start 2P'",
+          fontSize: "11px",
+          color: "#666",
+          align: "center",
+          resolution: 2,
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(1);
+
+    // Store all instruction elements in an array for easy access
+    this.allInstructions = [
+      this.instructions,
+      this.bonusLegend,
+      this.dangerLegend,
+      this.tempTip,
+    ];
+
+    // Fade out all instructions after 8 seconds
+    this.time.delayedCall(8000, () => {
+      this.tweens.add({
+        targets: this.allInstructions,
+        alpha: 0,
+        duration: 1000,
+        ease: "Power2",
+        onComplete: () => {
+          // Destroy all instruction elements
+          this.allInstructions.forEach((element) => {
+            if (element) element.destroy();
+          });
+          this.allInstructions = null;
+        },
+      });
+    });
   }
 
   createPlayer() {
@@ -158,11 +261,40 @@ class SaladScene extends Phaser.Scene {
     // Update instruction text wrap width
     this.instructions.setWordWrapWidth(Math.min(500, gameSize.width - 40));
 
+    // Update legend positions
+    if (this.bonusLegend) {
+      this.bonusLegend.setPosition(
+        gameSize.width / 2,
+        this.instructions.y + this.instructions.height + 20
+      );
+    }
+    if (this.dangerLegend) {
+      this.dangerLegend.setPosition(
+        gameSize.width / 2,
+        this.bonusLegend.y + this.bonusLegend.height + 10
+      );
+    }
+    if (this.tempTip) {
+      this.tempTip.setPosition(
+        gameSize.width / 2,
+        this.dangerLegend.y + this.dangerLegend.height + 15
+      );
+    }
+
     this.player.setPosition(100, this.floorY);
   }
 
   update() {
     if (this.isGameOver) return;
+
+    // Current speed for this frame
+    const baseSpeed = window.SPEED_CONFIG.initialSpeed;
+    const currentSpeed = baseSpeed * this.speedMultiplier;
+
+    // Update cloud background if enabled and working
+    if (this.cloudBackground && !this.cloudBackground.failed) {
+      this.cloudBackground.update(currentSpeed);
+    }
 
     // Jump logic
     if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
@@ -178,10 +310,6 @@ class SaladScene extends Phaser.Scene {
       this.isJumping = false;
     }
     this.player.setPosition(this.player.x, this.playerY);
-
-    // Current speed
-    const baseSpeed = window.SPEED_CONFIG.initialSpeed;
-    const currentSpeed = baseSpeed * this.speedMultiplier;
 
     // Move "dangerous" items left
     for (let i = this.dangerousItems.length - 1; i >= 0; i--) {
@@ -219,38 +347,29 @@ class SaladScene extends Phaser.Scene {
   }
 
   spawnDangerousItem() {
-    // e.g. unhealthy junk food
     const symbol = Phaser.Math.RND.pick(window.DANGEROUS_SYMBOLS);
     const item = this.add
       .text(this.scale.width, this.floorY, symbol, {
         fontFamily: "'Press Start 2P'",
-        fontSize: "45px", // Reduced from 64px to make items smaller
+        fontSize: "45px",
       })
-      .setOrigin(0.5, 1);
+      .setOrigin(0.5, 1)
+      .setDepth(1);
 
-    // Possibly scale it randomly but keep it smaller
     if (Phaser.Math.Between(0, 100) < 20) {
-      item.setScale(1.2); // Reduced from 1.5 to maintain smaller size
+      item.setScale(1.2);
     }
     this.dangerousItems.push(item);
+    this.gameContainer.add(item);
   }
 
   spawnFloatingVeggie() {
-    // e.g. healthy veggies in the sky
     const symbol = Phaser.Math.RND.pick(window.FLOATING_VEGGIES);
-
-    // Calculate maximum height based on jump physics
-    // Using jump velocity and gravity from the game
     const jumpVelocity = 12;
     const gravity = 0.35;
-    // Maximum jump height = v²/2g where v is initial velocity and g is gravity
     const maxJumpHeight = (jumpVelocity * jumpVelocity) / (2 * gravity);
-
-    // Position veggies within reachable height
-    // floorY - maxJumpHeight gives us the highest reachable point
     const minY = this.floorY - maxJumpHeight + 70;
     const maxY = this.floorY - 120;
-
     const skyY = Phaser.Math.Between(minY, maxY);
 
     const veg = this.add
@@ -258,12 +377,14 @@ class SaladScene extends Phaser.Scene {
         fontFamily: "'Press Start 2P'",
         fontSize: "32px",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(1);
 
     if (Phaser.Math.Between(0, 100) < 20) {
       veg.setScale(1.2);
     }
     this.floatingVeggies.push(veg);
+    this.gameContainer.add(veg);
   }
 
   checkCollisions() {
@@ -383,7 +504,7 @@ class SaladScene extends Phaser.Scene {
   showGameOverUI() {
     // Calculate responsive sizes based on screen width
     const gameWidth = this.scale.width;
-    const fontSize = Math.min(72, Math.max(32, gameWidth / 10)); // Responsive font size
+    const fontSize = Math.min(72, Math.max(32, gameWidth / 10));
     const finalScoreFontSize = Math.min(36, Math.max(24, gameWidth / 20));
     const buttonWidth = Math.min(300, gameWidth - 40);
 
@@ -457,6 +578,10 @@ class SaladScene extends Phaser.Scene {
     });
     buttonBg.on("pointerdown", () => {
       window.score = 0;
+      // Destroy all game over UI elements before restarting
+      [gameOverText, finalScore, buttonBg, buttonText].forEach((element) => {
+        if (element) element.destroy();
+      });
       this.scene.restart();
     });
 
