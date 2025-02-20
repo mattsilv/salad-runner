@@ -9,7 +9,7 @@ window.score = 0;
 const SPEED_CONFIG = {
   initialSpeed: 4.5,
   accelerationInterval: 5000, // Increase speed every 5 seconds
-  speedIncrease: 0.05, // 5% increase each time
+  speedIncrease: 0.07, // Increased from 0.05 to 0.07 (7% increase each time)
   maxSpeedMultiplier: 3.0, // Maximum 3x the initial speed
 };
 
