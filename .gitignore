@@ -23,3 +23,11 @@ Thumbs.db
 dist/
 build/
 .netlify/
+
+# Project specific
+.specstory/
+
+venv/
+
+game_code.md
+.codesight.toml

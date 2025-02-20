@@ -57,27 +57,36 @@ class SaladScene extends Phaser.Scene {
     this.gravity = 0.35;
     this.isJumping = false;
 
+    // Store timers so we can destroy them on game over
+    this.gameTimers = [];
+
     // Timers to spawn items
     // 1) "Dangerous" items (junk food) appear near the floor
-    this.time.addEvent({
-      delay: 1500, // every 1.5s
-      callback: () => this.spawnDangerousItem(),
-      loop: true,
-    });
+    this.gameTimers.push(
+      this.time.addEvent({
+        delay: 1500, // every 1.5s
+        callback: () => this.spawnDangerousItem(),
+        loop: true,
+      })
+    );
 
     // 2) "Floating" veggies appear less frequently up in the sky
-    this.time.addEvent({
-      delay: 4000, // every 4s
-      callback: () => this.spawnFloatingVeggie(),
-      loop: true,
-    });
+    this.gameTimers.push(
+      this.time.addEvent({
+        delay: 4000, // every 4s
+        callback: () => this.spawnFloatingVeggie(),
+        loop: true,
+      })
+    );
 
     // Timer to increase speed over time
-    this.time.addEvent({
-      delay: window.SPEED_CONFIG.accelerationInterval,
-      callback: () => this.increaseSpeed(),
-      loop: true,
-    });
+    this.gameTimers.push(
+      this.time.addEvent({
+        delay: window.SPEED_CONFIG.accelerationInterval,
+        callback: () => this.increaseSpeed(),
+        loop: true,
+      })
+    );
 
     // Input
     this.spaceKey = this.input.keyboard.addKey(
@@ -444,6 +453,22 @@ class SaladScene extends Phaser.Scene {
   gameOver() {
     if (this.isGameOver) return;
     this.isGameOver = true;
+
+    // Stop all game timers
+    this.gameTimers.forEach((timer) => {
+      timer.destroy();
+    });
+    this.gameTimers = [];
+
+    // Clean up existing items
+    this.dangerousItems.forEach((item) => {
+      item.destroy();
+    });
+    this.floatingVeggies.forEach((item) => {
+      item.destroy();
+    });
+    this.dangerousItems = [];
+    this.floatingVeggies = [];
 
     // Show big woozy face
     const bigWoozy = this.add

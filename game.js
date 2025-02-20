@@ -1,47 +1,5 @@
-const GAME_WIDTH = 800;
-const GAME_HEIGHT = 600;
+// Global score tracking
 let score = 0;
-
-// Game speed configuration
-const SPEED_CONFIG = {
-  initialSpeed: 4.5,
-  accelerationInterval: 5000, // Increase speed every 5 seconds
-  speedIncrease: 0.05, // 5% increase each time
-  maxSpeedMultiplier: 3.0, // Maximum 3x the initial speed
-};
-
-// Centralized configuration for the bowl (player) and the veggies (obstacles)
-const SPRITE_CONFIG = {
-  player: {
-    // Using an image for the bowl
-    type: "image",
-    key: "bowl",
-    file: "bowl.png",
-    // How high above the bottom the bowl is placed
-    offsetY: 80,
-    // Scaling factor for the bowl sprite
-    scale: 0.28,
-    // The approximate bounding box for collision detection
-    bounds: { width: 160, height: 76 },
-  },
-  obstacles: {
-    // Obstacles are emojis in this example
-    symbols: ["🥕", "🍅", "🥒", "🌽", "🍄", "🥦", "🥑"],
-    // Each obstacle is rendered as text with a certain font size
-    size: "64px",
-    // Scales them further after applying the font size
-    scale: 0.5,
-    // Same offset as the bowl so they line up on the same 'floor'
-    offsetY: 80,
-  },
-  gameOver: {
-    woozyBig: "🥴",
-    falling: "🥴",
-    sizeBig: "128px",
-    sizeFalling: "96px",
-    dropDistance: 800,
-  },
-};
 
 class SaladScene extends Phaser.Scene {
   constructor() {
@@ -50,79 +8,87 @@ class SaladScene extends Phaser.Scene {
 
   preload() {
     // Load the bowl image
-    this.load.image(SPRITE_CONFIG.player.key, SPRITE_CONFIG.player.file);
+    this.load.image(
+      window.SPRITE_CONFIG.player.key,
+      window.SPRITE_CONFIG.player.file
+    );
   }
 
   create() {
-    // Set the background color
-    this.cameras.main.setBackgroundColor("#ebf7d9");
+    // Basic setup
+    this.cameras.main.setBackgroundColor("#87CEEB"); // Sky blue background
+    this.floorY = this.scale.height - window.SPRITE_CONFIG.player.offsetY;
 
-    // Figure out if we're on mobile (for responsive layout)
-    const isMobile = this.game.device.os.android || this.game.device.os.iOS;
+    // Initialize background if enabled
+    if (window.GAME_CONFIG?.enableCityBackground) {
+      this.cityBackground = new CityBackground(this);
+    }
 
-    // Decide where the "floor" is (the baseline for the bowl & obstacles)
-    this.floorY = this.scale.height - SPRITE_CONFIG.player.offsetY;
+    // Create UI
+    this.createTitle();
+    this.createScoreText();
+    this.createInstructions();
 
-    // 1) CREATE TITLE
-    this.createTitle(isMobile);
+    // Create the bowl (player)
+    this.createPlayer();
 
-    // 2) CREATE SCORE TEXT
-    this.createScoreText(isMobile);
+    // Prepare arrays for items
+    this.dangerousItems = [];
+    this.floatingVeggies = [];
 
-    // 3) CREATE INSTRUCTIONS
-    this.createInstructions(isMobile);
-
-    // 4) CREATE PLAYER (the bowl)
-    this.createPlayer(isMobile);
-
-    // 5) INITIALIZE GAME VARIABLES
-    this.obstacles = [];
-    this.obstacleSpeed = SPEED_CONFIG.initialSpeed;
+    // Initial speeds
     this.speedMultiplier = 1.0;
-    this.obstacleDelay = 1800;
     this.isGameOver = false;
+    this.playerVelocity = 0;
+    this.gravity = 0.35;
+    this.isJumping = false;
 
-    // Set up speed increase timer
+    // Timers to spawn items
+    // 1) "Dangerous" items (junk food) appear near the floor
     this.time.addEvent({
-      delay: SPEED_CONFIG.accelerationInterval,
+      delay: 1500, // every 1.5s
+      callback: () => this.spawnDangerousItem(),
+      loop: true,
+    });
+
+    // 2) "Floating" veggies appear less frequently up in the sky
+    this.time.addEvent({
+      delay: 4000, // every 4s
+      callback: () => this.spawnFloatingVeggie(),
+      loop: true,
+    });
+
+    // Timer to increase speed over time
+    this.time.addEvent({
+      delay: window.SPEED_CONFIG.accelerationInterval,
       callback: () => this.increaseSpeed(),
       loop: true,
     });
 
-    // 6) SET UP A TIMER TO SPAWN OBSTACLES
-    //    Every 'obstacleDelay' ms, spawnObstacle() is called
-    this.time.addEvent({
-      delay: this.obstacleDelay,
-      callback: () => this.spawnObstacle(),
-      loop: true,
-    });
-
-    // 7) SET UP INPUTS
+    // Input
     this.spaceKey = this.input.keyboard.addKey(
       Phaser.Input.Keyboard.KeyCodes.SPACE
     );
     this.input.on("pointerdown", () => this.jump());
     this.input.setDefaultCursor("pointer");
 
-    // 8) MAKE ENTIRE SCREEN INTERACTIVE (useful for mobile)
+    // Full screen interactive
     this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0)
       .setOrigin(0, 0)
       .setInteractive();
 
-    // 9) HANDLE RESIZING
-    this.scale.on("resize", (gameSize) => {
-      this.handleResize(gameSize, isMobile);
-    });
+    // Handle resizing
+    this.scale.on("resize", (gameSize) => this.handleResize(gameSize));
   }
 
   // ----------------
   // SCENE CREATION HELPERS
   // ----------------
 
-  createTitle(isMobile) {
+  createTitle() {
     const titleY = 80;
-    const titleFontSize = isMobile ? 28 : 32; // from LAYOUT_CONFIG
+    const titleFontSize = 32; // from LAYOUT_CONFIG
     const titleContainer = this.add.container(this.scale.width / 2, titleY);
     const titleText = this.add
       .text(0, 0, "JUST\nSALAD\nRUNNER", {
@@ -137,8 +103,8 @@ class SaladScene extends Phaser.Scene {
     this.titleText = titleText; // Keep a reference if we need it
   }
 
-  createScoreText(isMobile) {
-    const scoreFontSize = isMobile ? 20 : 18; // from LAYOUT_CONFIG
+  createScoreText() {
+    const scoreFontSize = 18; // from LAYOUT_CONFIG
     this.scoreText = this.add
       .text(30, 30, "Score: 0", {
         fontSize: scoreFontSize,
@@ -148,8 +114,8 @@ class SaladScene extends Phaser.Scene {
       .setOrigin(0, 0);
   }
 
-  createInstructions(isMobile) {
-    const instructionsFontSize = isMobile ? 16 : 18;
+  createInstructions() {
+    const instructionsFontSize = 18;
     this.instructions = this.add
       .text(
         this.scale.width / 2,
@@ -167,8 +133,8 @@ class SaladScene extends Phaser.Scene {
       .setOrigin(0.5);
   }
 
-  createPlayer(isMobile) {
-    const playerX = isMobile ? 60 : 100;
+  createPlayer() {
+    const playerX = 100;
     // If using an image, create a sprite
     if (SPRITE_CONFIG.player.type === "image") {
       this.player = this.add
@@ -192,7 +158,7 @@ class SaladScene extends Phaser.Scene {
     this.isJumping = false;
   }
 
-  handleResize(gameSize, isMobile) {
+  handleResize(gameSize) {
     const width = gameSize.width;
     const height = gameSize.height;
     // Recompute the "floor"
@@ -211,7 +177,7 @@ class SaladScene extends Phaser.Scene {
     );
 
     // Reposition the player on the floor
-    const playerX = isMobile ? 60 : 100;
+    const playerX = 100;
     this.player.setPosition(playerX, this.floorY);
   }
 
@@ -271,27 +237,41 @@ class SaladScene extends Phaser.Scene {
   // OBSTACLES
   // ----------------
 
-  spawnObstacle() {
-    // Pick a random veggie emoji
-    const chosenEmoji = Phaser.Math.RND.pick(SPRITE_CONFIG.obstacles.symbols);
-
-    // Create a text object at the right edge, at the floor
-    const obstacle = this.add
-      .text(this.scale.width, this.floorY, chosenEmoji, {
-        fontSize: SPRITE_CONFIG.obstacles.size,
+  spawnDangerousItem() {
+    const symbol = Phaser.Math.RND.pick(window.DANGEROUS_SYMBOLS);
+    const item = this.add
+      .text(this.scale.width, this.floorY, symbol, {
+        fontFamily: "'Press Start 2P'",
+        fontSize: "45px",
       })
-      // bottom-center origin so it lines up on the same floor
       .setOrigin(0.5, 1);
 
-    // 20% chance to be 50% larger
-    let obstacleScale = SPRITE_CONFIG.obstacles.scale;
     if (Phaser.Math.Between(0, 100) < 20) {
-      obstacleScale *= 1.5;
+      item.setScale(1.2);
     }
-    obstacle.setScale(obstacleScale);
+    this.dangerousItems.push(item);
+  }
 
-    // Add to our array so we can move it in update()
-    this.obstacles.push(obstacle);
+  spawnFloatingVeggie() {
+    const symbol = Phaser.Math.RND.pick(window.FLOATING_VEGGIES);
+    const jumpVelocity = 12;
+    const gravity = 0.35;
+    const maxJumpHeight = (jumpVelocity * jumpVelocity) / (2 * gravity);
+    const minY = this.floorY - maxJumpHeight + 70;
+    const maxY = this.floorY - 120;
+    const skyY = Phaser.Math.Between(minY, maxY);
+
+    const veg = this.add
+      .text(this.scale.width, skyY, symbol, {
+        fontFamily: "'Press Start 2P'",
+        fontSize: "32px",
+      })
+      .setOrigin(0.5);
+
+    if (Phaser.Math.Between(0, 100) < 20) {
+      veg.setScale(1.2);
+    }
+    this.floatingVeggies.push(veg);
   }
 
   // ----------------
@@ -509,32 +489,18 @@ class SaladScene extends Phaser.Scene {
 
   increaseSpeed() {
     if (this.isGameOver) return;
-
-    // Increase speed multiplier by percentage
     this.speedMultiplier = Math.min(
-      this.speedMultiplier * (1 + SPEED_CONFIG.speedIncrease),
-      SPEED_CONFIG.maxSpeedMultiplier
+      this.speedMultiplier * (1 + window.SPEED_CONFIG.speedIncrease),
+      window.SPEED_CONFIG.maxSpeedMultiplier
     );
   }
 }
 
-// The Phaser game config
+// Initialize the game with the config from config.js
 const config = {
-  type: Phaser.AUTO,
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
-  backgroundColor: "#ebf7d9",
-  parent: "game-container",
+  ...window.PHASER_CONFIG,
   scene: [SaladScene],
-  scale: {
-    mode: Phaser.Scale.RESIZE,
-    width: "100%",
-    height: "100%",
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    autoRound: true,
-  },
-  resolution: window.devicePixelRatio,
 };
 
-// Finally, initialize the game
+// Initialize the game
 const game = new Phaser.Game(config);

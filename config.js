@@ -15,7 +15,7 @@ const SPEED_CONFIG = {
 
 // 1) "Dangerous" items you want to AVOID
 //    e.g. unhealthy junk food
-window.DANGEROUS_SYMBOLS = ["🍔", "🍟", "🍕", "🍩", "🍪"];
+window.DANGEROUS_SYMBOLS = ["🍔", "🍟", "🍕", "🍩"];
 
 // 2) "Floating" veggies you want to CATCH for bonus points
 //    e.g. healthy items that appear in the sky
