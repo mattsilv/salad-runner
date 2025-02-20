@@ -140,7 +140,12 @@ class GameMechanics {
   }
 
   checkSpawnFallingHazard() {
-    // Simplified falling hazard logic
+    // Don't spawn falling hazards on mobile devices
+    if (this.isMobileDevice()) {
+      return;
+    }
+
+    // Original falling hazard logic
     if (window.score >= 100) {
       // Start at 100 points
       const baseChance = 0.2; // 20% base chance
@@ -151,6 +156,14 @@ class GameMechanics {
         this.spawnFallingHazard();
       }
     }
+  }
+
+  isMobileDevice() {
+    return (
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      ) || window.innerWidth / window.innerHeight < 0.8 // Portrait mode ratio check
+    );
   }
 
   spawnFallingHazard() {

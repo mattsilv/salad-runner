@@ -81,6 +81,7 @@ class GameUI {
           color: "#2d5a27",
           align: "center",
           resolution: 2,
+          wordWrap: { width: instructionsWidth, useAdvancedWrap: true },
         }
       )
       .setOrigin(0.5)
@@ -99,23 +100,28 @@ class GameUI {
           color: "#ff0000",
           align: "center",
           resolution: 2,
+          wordWrap: { width: instructionsWidth, useAdvancedWrap: true },
         }
       )
       .setOrigin(0.5)
       .setDepth(1);
 
     // Add a temporary tip that fades out
+    const tipText = "TIP: Jump early to catch the floating veggies!";
+    const fontSize = Math.min(11, Math.max(8, this.scene.scale.width / 45));
+
     this.tempTip = this.scene.add
       .text(
         this.scene.scale.width / 2,
         this.dangerLegend.y + this.dangerLegend.height + 15,
-        "TIP: Jump early to catch the floating veggies!",
+        tipText,
         {
           fontFamily: "'Press Start 2P'",
-          fontSize: "11px",
+          fontSize: `${fontSize}px`,
           color: "#666",
           align: "center",
           resolution: 2,
+          wordWrap: { width: instructionsWidth, useAdvancedWrap: true },
         }
       )
       .setOrigin(0.5)
