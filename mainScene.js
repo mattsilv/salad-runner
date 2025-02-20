@@ -139,8 +139,14 @@ class SaladScene extends Phaser.Scene {
     const px = this.player.x;
     const py = this.player.y;
     const mobileScale = this.playerMobileScale || 1;
-    const bw = pCfg.bounds.width * 0.8 * mobileScale;
-    const bh = pCfg.bounds.height * 0.8 * mobileScale;
+
+    // Scale bounds proportionally with the sprite scale
+    const scaledWidth = pCfg.bounds.width * ((pCfg.scale * mobileScale) / 0.28); // 0.28 was original base scale
+    const scaledHeight =
+      pCfg.bounds.height * ((pCfg.scale * mobileScale) / 0.28);
+    const bw = scaledWidth * 0.8; // 0.8 for leniency
+    const bh = scaledHeight * 0.8;
+
     const playerBounds = new Phaser.Geom.Rectangle(
       px - bw / 2,
       py - bh,
