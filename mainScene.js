@@ -50,17 +50,19 @@ class SaladScene extends Phaser.Scene {
     // Create game mechanics manager
     this.mechanics = new GameMechanics(this);
 
-    // Initial player physics
-    this.playerVelocity = 0;
-    this.gravity = 0.35;
-    this.isJumping = false;
-
     // Input
     this.spaceKey = this.input.keyboard.addKey(
       Phaser.Input.Keyboard.KeyCodes.SPACE
     );
+
+    // Simple jump parameters
+    this.playerVelocity = 0;
+    this.gravity = 0.35;
+    this.isJumping = false;
+    this.jumpVelocity = -12; // Single jump power
+
+    // Keep touch controls for mobile
     this.input.on("pointerdown", () => this.jump());
-    this.input.setDefaultCursor("pointer");
 
     // Full screen interactive
     this.add
@@ -98,7 +100,7 @@ class SaladScene extends Phaser.Scene {
       this.cloudBackground.update(this.mechanics.getCurrentSpeed());
     }
 
-    // Jump logic
+    // Simple jump check
     if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
       this.jump();
     }
@@ -122,7 +124,7 @@ class SaladScene extends Phaser.Scene {
 
   jump() {
     if (!this.isJumping) {
-      this.playerVelocity = -12;
+      this.playerVelocity = this.jumpVelocity;
       this.isJumping = true;
     }
   }
@@ -153,6 +155,25 @@ class SaladScene extends Phaser.Scene {
       );
 
       if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, itemRect)) {
+        this.gameOver();
+        return;
+      }
+    }
+
+    // Check falling hazards
+    for (let i = 0; i < this.mechanics.fallingHazards.length; i++) {
+      const hazard = this.mechanics.fallingHazards[i];
+      const hazardBounds = hazard.sprite.getBounds();
+      const hazardRect = new Phaser.Geom.Rectangle(
+        hazardBounds.x + hazardBounds.width * 0.2,
+        hazardBounds.y + hazardBounds.height * 0.2,
+        hazardBounds.width * 0.6,
+        hazardBounds.height * 0.6
+      );
+
+      if (
+        Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, hazardRect)
+      ) {
         this.gameOver();
         return;
       }

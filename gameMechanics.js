@@ -3,6 +3,7 @@ class GameMechanics {
     this.scene = scene;
     this.dangerousItems = [];
     this.floatingVeggies = [];
+    this.fallingHazards = [];
     this.gameTimers = [];
     this.speedMultiplier = 1.0;
     this.isGameOver = false;
@@ -31,11 +32,21 @@ class GameMechanics {
         loop: true,
       })
     );
+
+    // Add timer for falling hazards
+    this.gameTimers.push(
+      this.scene.time.addEvent({
+        delay: 2000, // Check every 2 seconds
+        callback: () => this.checkSpawnFallingHazard(),
+        loop: true,
+      })
+    );
   }
 
   spawnDangerousItem() {
-    const minSpacing = window.SPRITE_CONFIG.player.bounds.width * 2.5;
-    const maxSpacing = minSpacing * 3.5; // Increased max spacing
+    // Simple random spacing between 2-4x bowl width
+    const minSpacing = window.SPRITE_CONFIG.player.bounds.width * 2;
+    const maxSpacing = window.SPRITE_CONFIG.player.bounds.width * 4;
     const spacing = Phaser.Math.Between(minSpacing, maxSpacing);
 
     // Only spawn if we're far enough from the last hazard
@@ -66,11 +77,11 @@ class GameMechanics {
   spawnNextHazard() {
     if (this.isGameOver) return;
 
-    const baseDelay = 1500;
-    const randomDelay = Phaser.Math.Between(-300, 300);
+    // Random delay between 1-2 seconds
+    const delay = Phaser.Math.Between(1000, 2000);
     this.gameTimers.push(
       this.scene.time.addEvent({
-        delay: baseDelay + randomDelay,
+        delay: delay,
         callback: () => this.spawnDangerousItem(),
         loop: false,
       })
@@ -128,11 +139,63 @@ class GameMechanics {
     );
   }
 
+  checkSpawnFallingHazard() {
+    // Simplified falling hazard logic
+    if (window.score >= 100) {
+      // Start at 100 points
+      const baseChance = 0.2; // 20% base chance
+      const extraChance = Math.floor((window.score - 100) / 40) * 0.1; // +10% every 40 points
+      const finalChance = Math.min(baseChance + extraChance, 0.6); // Cap at 60%
+
+      if (Math.random() < finalChance) {
+        this.spawnFallingHazard();
+      }
+    }
+  }
+
+  spawnFallingHazard() {
+    const maxX = this.scene.scale.width - 50;
+    const x = Phaser.Math.Between(100, maxX);
+
+    const hazard = {
+      sprite: this.scene.add
+        .text(x, -50, "😡", {
+          fontFamily: "'Press Start 2P'",
+          fontSize: "35px",
+        })
+        .setOrigin(0.5),
+      velocityY: 0,
+    };
+
+    hazard.sprite.setDepth(1);
+    this.scene.gameContainer.add(hazard.sprite);
+    this.fallingHazards.push(hazard);
+  }
+
   update() {
     if (this.isGameOver) return;
 
     const baseSpeed = window.SPEED_CONFIG.initialSpeed;
     const currentSpeed = baseSpeed * this.speedMultiplier;
+
+    // Update falling hazards
+    for (let i = this.fallingHazards.length - 1; i >= 0; i--) {
+      const hazard = this.fallingHazards[i];
+
+      // Apply gravity
+      hazard.velocityY += 0.2; // Simplified gravity
+      hazard.sprite.y += hazard.velocityY;
+
+      // Remove if hits floor or goes off screen
+      if (hazard.sprite.y >= this.scene.floorY || hazard.sprite.x < -50) {
+        hazard.sprite.destroy();
+        this.fallingHazards.splice(i, 1);
+        continue;
+      }
+
+      // Move left with game speed
+      hazard.sprite.x -= currentSpeed * 0.7; // Slightly slower than other hazards
+    }
 
     // Move "dangerous" items left
     for (let i = this.dangerousItems.length - 1; i >= 0; i--) {
@@ -173,6 +236,11 @@ class GameMechanics {
     });
     this.dangerousItems = [];
     this.floatingVeggies = [];
+
+    this.fallingHazards.forEach((hazard) => {
+      hazard.sprite.destroy();
+    });
+    this.fallingHazards = [];
   }
 
   getCurrentSpeed() {

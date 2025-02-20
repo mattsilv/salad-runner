@@ -45,6 +45,19 @@ const SPRITE_CONFIG = {
     // Same offset as the bowl so they line up on the same 'floor'
     offsetY: 80,
   },
+  fallingHazards: {
+    symbol: "😡",
+    size: "35px",
+    minX: 100,
+    gravity: 0.2,
+    bounceY: -8,
+    maxBounces: 2,
+    spawnHeight: -50,
+    minScore: 100,
+    spawnChance: 0.2,
+    scoreInterval: 40,
+    spawnChanceIncrease: 0.15,
+  },
   gameOver: {
     woozyBig: "🥴",
     falling: "🥴",
