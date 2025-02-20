@@ -30,8 +30,8 @@ const SPRITE_CONFIG = {
     file: "bowl.png",
     // How high above the bottom the bowl is placed
     offsetY: 80,
-    // Scaling factor for the bowl sprite
-    scale: 0.28,
+    // Scaling factor for the bowl sprite (reduced base scale)
+    scale: 0.2, // Changed from 0.28 to 0.2 for better mobile scaling
     // The approximate bounding box for collision detection
     bounds: { width: 160, height: 76 },
   },

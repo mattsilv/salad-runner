@@ -78,7 +78,7 @@ class SaladScene extends Phaser.Scene {
     const playerX = 100;
     const pCfg = window.SPRITE_CONFIG.player;
     const isMobile = this.mechanics?.isMobileDevice() || false;
-    const mobileScale = isMobile ? 0.5 : 1;
+    const mobileScale = isMobile ? 0.7 : 1.4; // Adjusted scale factors for better size difference
 
     this.player = this.add
       .sprite(playerX, this.floorY, pCfg.key)
