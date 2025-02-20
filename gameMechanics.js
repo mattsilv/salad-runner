@@ -44,9 +44,12 @@ class GameMechanics {
   }
 
   spawnDangerousItem() {
-    // Simple random spacing between 2-4x bowl width
-    const minSpacing = window.SPRITE_CONFIG.player.bounds.width * 2;
-    const maxSpacing = window.SPRITE_CONFIG.player.bounds.width * 4;
+    const mobileScale = this.isMobileDevice() ? 0.5 : 1;
+    // Simple random spacing between 2-4x bowl width, adjusted for mobile
+    const minSpacing =
+      window.SPRITE_CONFIG.player.bounds.width * 2 * mobileScale;
+    const maxSpacing =
+      window.SPRITE_CONFIG.player.bounds.width * 4 * mobileScale;
     const spacing = Phaser.Math.Between(minSpacing, maxSpacing);
 
     // Only spawn if we're far enough from the last hazard
@@ -55,16 +58,17 @@ class GameMechanics {
     }
 
     const symbol = Phaser.Math.RND.pick(window.DANGEROUS_SYMBOLS);
+    const fontSize = this.isMobileDevice() ? "35px" : "45px";
     const item = this.scene.add
       .text(this.scene.scale.width, this.scene.floorY, symbol, {
         fontFamily: "'Press Start 2P'",
-        fontSize: "45px",
+        fontSize: fontSize,
       })
       .setOrigin(0.5, 1)
       .setDepth(1);
 
     if (Phaser.Math.Between(0, 100) < 20) {
-      item.setScale(1.2);
+      item.setScale(1.2 * mobileScale);
     }
     this.dangerousItems.push(item);
     this.scene.gameContainer.add(item);
@@ -89,32 +93,35 @@ class GameMechanics {
   }
 
   spawnFloatingVeggie() {
+    const mobileScale = this.isMobileDevice() ? 0.5 : 1;
     const symbol = Phaser.Math.RND.pick(window.FLOATING_VEGGIES);
     const jumpVelocity = 12;
     const gravity = 0.35;
     const maxJumpHeight = (jumpVelocity * jumpVelocity) / (2 * gravity);
 
     // Increased range of heights while keeping within jump range
-    const minY = this.scene.floorY - maxJumpHeight + 40; // Adjusted from 70 to 40
-    const maxY = this.scene.floorY - 100;
+    const minY = this.scene.floorY - maxJumpHeight + 40 * mobileScale; // Adjusted for mobile
+    const maxY = this.scene.floorY - 100 * mobileScale;
     const skyY = Phaser.Math.Between(minY, maxY);
 
     // Create container for veggie and points text
     const container = this.scene.add.container(this.scene.scale.width, skyY);
     container.setDepth(1);
 
+    const fontSize = this.isMobileDevice() ? "24px" : "32px";
     const veg = this.scene.add
       .text(0, 0, symbol, {
         fontFamily: "'Press Start 2P'",
-        fontSize: "32px",
+        fontSize: fontSize,
       })
       .setOrigin(0.5);
 
-    // Add points indicator
+    // Add points indicator with adjusted size
+    const pointsFontSize = this.isMobileDevice() ? "12px" : "16px";
     const pointsText = this.scene.add
       .text(veg.width / 2 + 10, -15, "+20", {
         fontFamily: "'Press Start 2P'",
-        fontSize: "16px",
+        fontSize: pointsFontSize,
         color: "#2d5a27",
         stroke: "#ffffff",
         strokeThickness: 4,
@@ -124,7 +131,7 @@ class GameMechanics {
     container.add([veg, pointsText]);
 
     if (Phaser.Math.Between(0, 100) < 20) {
-      container.setScale(1.2);
+      container.setScale(1.2 * mobileScale);
     }
 
     this.floatingVeggies.push(container);

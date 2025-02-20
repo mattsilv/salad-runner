@@ -77,12 +77,16 @@ class SaladScene extends Phaser.Scene {
   createPlayer() {
     const playerX = 100;
     const pCfg = window.SPRITE_CONFIG.player;
+    const isMobile = this.mechanics?.isMobileDevice() || false;
+    const mobileScale = isMobile ? 0.5 : 1;
 
     this.player = this.add
       .sprite(playerX, this.floorY, pCfg.key)
-      .setScale(pCfg.scale)
+      .setScale(pCfg.scale * mobileScale)
       .setOrigin(0.5, 1);
 
+    // Store the mobile scale for collision calculations
+    this.playerMobileScale = mobileScale;
     this.playerY = this.floorY;
   }
 
@@ -134,8 +138,9 @@ class SaladScene extends Phaser.Scene {
     const pCfg = window.SPRITE_CONFIG.player;
     const px = this.player.x;
     const py = this.player.y;
-    const bw = pCfg.bounds.width * 0.8;
-    const bh = pCfg.bounds.height * 0.8;
+    const mobileScale = this.playerMobileScale || 1;
+    const bw = pCfg.bounds.width * 0.8 * mobileScale;
+    const bh = pCfg.bounds.height * 0.8 * mobileScale;
     const playerBounds = new Phaser.Geom.Rectangle(
       px - bw / 2,
       py - bh,
